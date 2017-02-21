@@ -11,7 +11,7 @@
     "ipConfigurations": {
       "type": "array",
       "metadata": {
-        "Description": "The IP configurations of the NIC"
+        "Description": "The IP configurations of the  NIC"
       }
     },
     "dnsServers": {
