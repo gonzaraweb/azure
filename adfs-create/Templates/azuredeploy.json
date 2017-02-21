@@ -1,0 +1,142 @@
+﻿{
+  "$schema": "https: //schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name for the VM"
+      }
+
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_DS2_V2"
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "User name for the VM"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for the VM"
+      }
+    },
+    "windowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "allowedValues": [
+        "2008-R2-SP1",
+        "2012-Datacenter",
+        "2012-R2-Datacenter"
+      ]
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "adfsedu01"
+    },
+    "diagStorageAccountName": {
+      "type": "string",
+      "defaultValue": "edudiagnostics"
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "EDUNets"
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "DMZ"
+    },
+    "avSetName": {
+      "type": "string",
+      "defaultValue": "AVSet-WAP"
+    }
+  },
+  "variables": {
+    "apiVersion": "2015-06-15",
+    "location": "[ resourceGroup().location ]",
+    "imagePublisher": "MicrosoftWindowsServer",
+    "imageOffer": "WindowsServer",
+    "OSDiskName": " [ concat(parameters('vmName'), '-OSDisk') ]",
+    "nicName": "[ concat('vNic-', parameters('vmName'), '-', parameters('subnetName')) ]",
+    "storageAccountType": "Standard_LRS",
+    "vmStorageAccountContainerName": "vhds",
+    "vnetID": "[ resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')) ]",
+    "subnetRef": "[ concat(variables('vnetID'), '/subnets/', parameters('subnetName')) ]"
+  },
+  "resources": [
+    {
+      "apiVersion": "[ variables('apiVersion') ]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[ variables('nicName') ]",
+      "location": "[ variables('location') ]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[ variables('subnetRef') ] "
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "[ variables('apiVersion') ]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": " [ parameters('vmName') ]",
+      "location": "[ variables('location') ]",
+      "dependsOn": [
+        "[ concat('Microsoft.Network/networkInterfaces/', variables('nicName')) ]"
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[ resourceId('Microsoft.Compute/availabilitySets', parameters('avSetName')) ]"
+        },
+        "hardwareProfile": {
+          "vmSize": " [ parameters('vmSize') ] "
+        },
+        "osProfile": {
+          "computerName": " [ parameters('vmName') ] ",
+          "adminUsername": " [ parameters('adminUsername') ] ",
+          "adminPassword": " [ parameters('adminPassword') ] "
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[ variables('imagePublisher') ] ",
+            "offer": " [ variables('imageOffer') ]",
+            "sku": " [ parameters('windowsOSVersion') ]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": " [ concat('http : //',parameters('storageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[ resourceId('Microsoft.Network/networkInterfaces', variables('nicName')) ]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true",
+            "storageUri": "[ concat('http : //',parameters('diagStorageAccountName'),'.blob.core.windows.net')]"
+          }
+        }
+      }
+    }
+  ]
+}

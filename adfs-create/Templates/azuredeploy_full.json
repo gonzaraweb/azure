@@ -1,0 +1,873 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "regionToDeploy": {
+      "type": "string"
+    },
+    "adminUserName": {
+      "type": "string"
+    },
+    "adminPassword": {
+      "defaultValue": null,
+      "type": "securestring"
+    },
+    "availabilitySets_AVSet_ADFS_name": {
+      "defaultValue": "AVSet-ADFS",
+      "type": "string"
+    },
+    "availabilitySets_AVSet_DC_name": {
+      "defaultValue": "AVSet-DC",
+      "type": "string"
+    },
+    "availabilitySets_AVSet_WAP_name": {
+      "defaultValue": "AVSet-WAP",
+      "type": "string"
+    },
+    "vm_ADFSServer_One_Name": {
+      "defaultValue": "PDMADFS01",
+      "type": "string"
+    },
+    "vm_ADFSServer_Two_Name": {
+      "defaultValue": "PDMADFS02",
+      "type": "string"
+    },
+    "vm_DCServer_One_Name": {
+      "defaultValue": "PDMDC01",
+      "type": "string"
+    },
+    "vm_DCServer_One_StaticProdIPAddress": {
+      "defaultValue": "172.16.1.11",
+      "type": "string"
+    },
+    "vm_DCServer_Two_Name": {
+      "defaultValue": "PDMDC02",
+      "type": "string"
+    },
+    "vm_DCServer_Two_StaticProdIPAddress": {
+      "defaultValue": "172.16.1.12",
+      "type": "string"
+    },
+    "vm_WAPServer_One_Name": {
+      "defaultValue": "PDMWAP01",
+      "type": "string"
+    },
+    "vm_WAPServer_Two_Name": {
+      "defaultValue": "PDMWAP02",
+      "type": "string"
+    },
+    "networkInterfaces_vNIC_PDMADFS01_Prod_name": {
+      "defaultValue": "VNIC-PDMADFS01-Prod",
+      "type": "string"
+    },
+    "networkInterfaces_vNIC_PDMADFS02_Prod_name": {
+      "defaultValue": "VNIC-PDMADFS02-Prod",
+      "type": "string"
+    },
+    "networkInterfaces_vNIC_PDMDC01_Prod_name": {
+      "defaultValue": "VNIC-PDMDC01-Prod",
+      "type": "string"
+    },
+    "networkInterfaces_vNIC_PDMDC02_Prod_name": {
+      "defaultValue": "VNIC-PDMDC02-Prod",
+      "type": "string"
+    },
+    "networkInterfaces_vNic_PDMWAP01_DMZ_name": {
+      "defaultValue": "VNIC-PDMWAP01-DMZ",
+      "type": "string"
+    },
+    "networkInterfaces_vNic_PDMWAP02_DMZ_name": {
+      "defaultValue": "VNIC-PDMWAP02-DMZ",
+      "type": "string"
+    },
+    "networkSecurityGroups_NSG_DMZ_name": {
+      "defaultValue": "NSG-DMZ",
+      "type": "string"
+    },
+    "networkSecurityGroups_NSG_Prod_name": {
+      "defaultValue": "NSG-Prod",
+      "type": "string"
+    },
+    "VNET_Name": {
+      "defaultValue": "PdmNets",
+      "type": "string"
+    },
+    "VNET_AddressSpace_Slash_Notation": {
+      "defaultValue": "172.16.0.0/16",
+      "type": "string"
+    },
+    "VNET_Production_Subnet_Name": {
+      "defaultValue": "Production",
+      "type": "string"
+    },
+    "VNET_Production_Subnet_AddressSpace_Slash_Notation": {
+      "defaultValue": "172.16.1.0/24",
+      "type": "string"
+    },
+    "VNET_DMZ_Subnet_Name": {
+      "defaultValue": "DMZ",
+      "type": "string"
+    },
+    "VNET_DMZ_Subnet_AddressSpace_Slash_Notation": {
+      "defaultValue": "172.16.2.0/24",
+      "type": "string"
+    },
+    "storageAccountType": {
+      "type": "string",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_RAGRS",
+        "Premium_LRS"
+      ],
+      "metadata": {
+        "description": "The type of the Storage Account created"
+      },
+      "defaultValue": "Premium_LRS"
+    },
+    "storageAccountOne_Name": {
+      "defaultValue": "pdm-storage-vm1",
+      "type": "string"
+    },
+    "storageAccountOne_osDiskVhdUri": {
+      "defaultValue": "[concat('https://',parameters('storageAccountOne_Name'),'.blob.core.windows.de/images/2012R2.vhd')]",
+      "type": "string",
+      "metadata": { "description": "Uri of your storage account one image" }
+    },
+    "storageAccountTwo_Name": {
+      "defaultValue": "pdm-storage-vm2",
+      "type": "string"
+    },
+    "storageAccountTwo_osDiskVhdUri": {
+      "defaultValue": "[concat('https://',parameters('storageAccountTwo_Name'),'.blob.core.windows.de/images/2012R2.vhd')]",
+      "type": "string",
+      "metadata": { "description": "Uri of your storage account two image" }
+    }
+  },
+  "variables": {
+    "VNETID": "[resourceId('Microsoft.Network/virtualNetworks',parameters('VNET_Name'))]",
+    "subnetProd": "[concat(variables('VNETID'),'/subnets/',parameters('VNET_Production_Subnet_Name'))]",
+    "subnetDMZ": "[concat(variables('VNETID'),'/subnets/',parameters('VNET_DMZ_Subnet_Name'))]"
+  },
+  "resources": [
+   {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('availabilitySets_AVSet_ADFS_name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "tags": { },
+      "properties": {
+        "platformUpdateDomainCount": 2,
+        "platformFaultDomainCount": 2
+      },
+      "resources": [ ],
+      "dependsOn": [ ]
+    },
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('availabilitySets_AVSet_DC_name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "tags": { },
+      "properties": {
+        "platformUpdateDomainCount": 2,
+        "platformFaultDomainCount": 2
+      },
+      "resources": [ ],
+      "dependsOn": [ ]
+    },
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('availabilitySets_AVSet_WAP_name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "tags": { },
+      "properties": {
+        "platformUpdateDomainCount": 2,
+        "platformFaultDomainCount": 2
+      },
+      "resources": [ ],
+      "dependsOn": [ ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm_ADFSServer_One_Name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_ADFS_name'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_DS2_v2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[parameters('vm_ADFSServer_One_Name')]",
+            "createOption": "FromImage",
+            "vhd": {
+              "uri": "[concat('https', '://', parameters('storageAccountOne_Name'), '.blob.core.windows.de', concat('/vhds/', parameters('vm_ADFSServer_One_Name'),'osdisk.vhd'))]"
+            },
+            "caching": "ReadWrite"
+          },
+          "dataDisks": [ ]
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm_ADFSServer_One_Name')]",
+          "adminUsername": "[parameters('adminUserName')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "secrets": [ ],
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMADFS01_Prod_name'))]"
+            }
+          ]
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_ADFS_name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountOne_Name'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMADFS01_Prod_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm_ADFSServer_Two_Name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_ADFS_name'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_DS2_v2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[parameters('vm_ADFSServer_Two_Name')]",
+            "createOption": "FromImage",
+            "vhd": {
+              "uri": "[concat('https', '://', parameters('storageAccountTwo_Name'), '.blob.core.windows.de', concat('/vhds/', parameters('vm_ADFSServer_Two_Name'),'osdisk.vhd'))]"
+            },
+            "caching": "ReadWrite"
+          },
+          "dataDisks": [ ]
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm_ADFSServer_Two_Name')]",
+          "adminUsername": "[parameters('adminUserName')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "secrets": [ ],
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMADFS02_Prod_name'))]"
+            }
+          ]
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_ADFS_name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountTwo_Name'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMADFS02_Prod_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm_DCServer_One_Name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_DC_name'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_DS2_V2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "4.0.20160812"
+          },
+          "osDisk": {
+            "name": "[concat(parameters('vm_DCServer_One_Name'),'-OSDISK')]",
+            "createOption": "FromImage",
+            "vhd": {
+              "uri": "[concat('https', '://', parameters('storageAccountOne_Name'), '.blob.core.windows.de', concat('/vhds/', parameters('vm_DCServer_One_Name'),'_OSDisk.vhd'))]"
+            },
+            "caching": "None"
+          },
+          "dataDisks": [ ]
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm_DCServer_One_Name')]",
+          "adminUsername": "[parameters('adminUserName')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "secrets": [ ],
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "properties": {
+                "primary": true
+              },
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMDC01_Prod_name'))]"
+            }
+          ]
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_DC_name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountOne_Name'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMDC01_Prod_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm_DCServer_Two_Name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_DC_name'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_DS2_V2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "4.0.20160812"
+          },
+          "osDisk": {
+            "name": "[concat(parameters('vm_DCServer_Two_Name'),'-OSDISK')]",
+            "createOption": "FromImage",
+            "vhd": {
+              "uri": "[concat('https', '://', parameters('storageAccountTwo_Name'), '.blob.core.windows.de', concat('/vhds/', parameters('vm_DCServer_Two_Name'),'_OSDisk.vhd'))]"
+            },
+            "caching": "None"
+          },
+          "dataDisks": [ ]
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm_DCServer_Two_Name')]",
+          "adminUsername": "[parameters('adminUserName')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "secrets": [ ],
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "properties": {
+                "primary": true
+              },
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMDC02_Prod_name'))]"
+            }
+          ]
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_DC_name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountTwo_Name'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNIC_PDMDC02_Prod_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm_WAPServer_One_Name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_WAP_name'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_DS2_V2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "createOption": "FromImage",
+            "vhd": {
+              "uri": "[concat('http', '://', parameters('storageAccountOne_Name'), '.blob.core.windows.de', concat('/vhds/', parameters('vm_WAPServer_One_Name'),'-OSDisk.vhd'))]"
+            },
+            "caching": "ReadWrite"
+          },
+          "dataDisks": [ ]
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm_WAPServer_One_Name')]",
+          "adminUsername": "[parameters('adminUserName')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "secrets": [ ],
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNic_PDMWAP01_DMZ_name'))]"
+            }
+          ]
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_WAP_name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountOne_Name'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNic_PDMWAP01_DMZ_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm_WAPServer_Two_Name')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_WAP_name'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_DS2_V2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "createOption": "FromImage",
+            "vhd": {
+              "uri": "[concat('http', '://', parameters('storageAccountTwo_Name'), '.blob.core.windows.de', concat('/vhds/', parameters('vm_WAPServer_Two_Name'),'-OSDisk.vhd'))]"
+            },
+            "caching": "ReadWrite"
+          },
+          "dataDisks": [ ]
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm_WAPServer_Two_Name')]",
+          "adminUsername": "[parameters('adminUserName')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "secrets": [ ],
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNic_PDMWAP02_DMZ_name'))]"
+            }
+          ]
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_AVSet_WAP_name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountTwo_Name'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_vNic_PDMWAP02_DMZ_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('networkInterfaces_vNIC_PDMADFS01_Prod_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetProd')]"
+              }
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": [ ]
+        },
+        "enableIPForwarding": false
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('VNET_Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('networkInterfaces_vNIC_PDMADFS02_Prod_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetProd')]"
+              }
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": [ ]
+        },
+        "enableIPForwarding": false
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('VNET_Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('networkInterfaces_vNIC_PDMDC01_Prod_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "[parameters('vm_DCServer_One_StaticProdIPAddress')]",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('subnetProd')]"
+              }
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": [ ]
+        },
+        "enableIPForwarding": false
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('VNET_Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('networkInterfaces_vNIC_PDMDC02_Prod_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "[parameters('vm_DCServer_Two_StaticProdIPAddress')]",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('subnetProd')]"
+              }
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": [ ]
+        },
+        "enableIPForwarding": false
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('VNET_Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('networkInterfaces_vNic_PDMWAP01_DMZ_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetDMZ')]"
+              }
+
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": [ ]
+        },
+        "enableIPForwarding": false
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('VNET_Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[parameters('networkInterfaces_vNic_PDMWAP02_DMZ_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetDMZ')]"
+              }
+
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": [ ]
+        },
+        "enableIPForwarding": false
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('VNET_Name'))]"
+
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('networkSecurityGroups_NSG_DMZ_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowHTTPSFromInternet",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "AllowHTTPSFromProduction",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "[parameters('VNET_Production_Subnet_AddressSpace_Slash_Notation')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      },
+      "resources": [ ],
+      "dependsOn": [ ]
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('networkSecurityGroups_NSG_Prod_name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowInboundFromDMZ",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "[parameters('VNET_DMZ_Subnet_AddressSpace_Slash_Notation')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "DenyAllInboundDMZ",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "[parameters('VNET_DMZ_Subnet_AddressSpace_Slash_Notation')]",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "DenyAllOutboundToInternet",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "Internet",
+              "access": "Deny",
+              "priority": 200,
+              "direction": "Outbound"
+            }
+          }
+        ]
+      },
+      "resources": [ ],
+      "dependsOn": [ ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[parameters('VNET_Name')]",
+      "apiVersion": "2016-03-30",
+      "location": "[parameters('regionToDeploy')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('VNET_AddressSpace_Slash_Notation')]"
+          ]
+        },
+        "dhcpOptions": {
+          "dnsServers": [
+            "[parameters('vm_DCServer_One_StaticProdIPAddress')]",
+            "[parameters('vm_DCServer_Two_StaticProdIPAddress')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('VNET_Production_Subnet_Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('VNET_Production_Subnet_AddressSpace_Slash_Notation')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroups_NSG_Prod_name'))]"
+              }
+            }
+          },
+          {
+            "name": "[parameters('VNET_DMZ_Subnet_Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('VNET_DMZ_Subnet_AddressSpace_Slash_Notation')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroups_NSG_DMZ_name'))]"
+              }
+            }
+          }
+        ]
+      },
+      "resources": [ ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroups_NSG_Prod_name'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroups_NSG_DMZ_name'))]"
+      ]
+    },
+    {
+      "comments": "Generalized from resource: '/subscriptions/1be39d1f-b688-466e-b3cd-b3a702083f66/resourceGroups/adfsdeployment/providers/Microsoft.Storage/storageAccounts/adfspdm01'.",
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Premium_LRS",
+        "tier": "Premium"
+      },
+      "kind": "Storage",
+      "name": "[parameters('storageAccountOne_Name')]",
+      "apiVersion": "2016-01-01",
+      "location": "[parameters('regionToDeploy')]",
+      "tags": { },
+      "properties": {
+        "encryption": {
+          "keySource": "Microsoft.Storage",
+          "services": {
+            "blob": {
+              "enabled": true
+            }
+          }
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [ ]
+    },
+    {
+      "comments": "Generalized from resource: '/subscriptions/1be39d1f-b688-466e-b3cd-b3a702083f66/resourceGroups/adfsdeployment/providers/Microsoft.Storage/storageAccounts/adfspdm02'.",
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Premium_LRS",
+        "tier": "Premium"
+      },
+      "kind": "Storage",
+      "name": "[parameters('storageAccountTwo_Name')]",
+      "apiVersion": "2016-01-01",
+      "location": "[parameters('regionToDeploy')]",
+      "tags": { },
+      "properties": {
+        "encryption": {
+          "keySource": "Microsoft.Storage",
+          "services": {
+            "blob": {
+              "enabled": true
+            }
+          }
+        }
+      },
+      "resources": [ ],
+      "dependsOn": [ ]
+    }
+  ]
+}
