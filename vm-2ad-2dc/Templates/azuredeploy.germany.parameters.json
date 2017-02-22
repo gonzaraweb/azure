@@ -1,0 +1,30 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "newStorageAccountName": {
+      "value": "pdmvm2ad2dcstorage"
+    },
+    "adminUsername": {
+      "value": "pdmAdmin"
+    },
+    "adminPassword": {
+      "value": "MY-micro26$/$$%2017D"
+    },
+    "adVMSize": {
+      "value": "Standard_DS2_v2"
+    },
+    "dnsPrefix": {
+      "value": "pdmad"
+    },
+    "publicIPAddressName": {
+      "value": "pdmPublicIp"
+    },
+    "domainName": {
+      "value": "pdm.local"
+    },
+    "storageEndpointSuffix": {
+      "value": "core.cloudapi.de"
+    }
+  }
+}
